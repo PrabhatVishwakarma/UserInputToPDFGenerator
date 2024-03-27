@@ -1,0 +1,222 @@
+﻿@page "/"
+@using Form5.Service
+@using Form5.Data
+@using Form5.Models
+@using System.Threading.Tasks
+@using Org.BouncyCastle.Utilities.IO
+@using iText.Kernel.Pdf
+@using iText.Layout
+@using System.IO
+@using Microsoft.JSInterop
+@using iText.Layout.Element
+@inject NavigationManager NavigationManager
+@inject IJSRuntime JSRuntime
+@inject SafetyService safetyService
+
+<div class="card-header">
+    <h2 align="center">Safety Form</h2>
+</div>
+<form>
+    <div class="row justify-content-center">
+        <div class="col-md-10">
+            <div class="row">
+                <div class="col-md-8">
+                    <label for="Plant" class="control-label">Plant</label>
+                    <select @bind="@obj.Plant" class="form-control">
+                        <option value=""></option>
+                        <option value="Nashik">Nashik</option>
+                        <option value="Goa">Goa</option>
+                        <option value="Alwar">Alwar</option>
+                    </select>
+                </div>
+            </div> <br>
+            <div class="col-md-8">
+                <label for="Department" class="control-label">Department</label>
+                <select @bind="@obj.Department" class="form-control">
+                    <option value=""></option>
+                    <option value="Bottling">Bottling</option>
+                    <option value="Maintenance">Maintenance</option>
+                    <option value="Logistic">Logistic</option>
+                    <option value="Production">Production</option>
+                    <option value="Admin">Admin</option>
+                </select>
+            </div>   <br>
+            <div class="col-md-8">
+                <label for="Name of Supervisor" class="control-label">Name of Supervisor</label>
+                <select @bind="@obj.NameofSupervisor" class="form-control">
+                    <option value=""></option>
+                    <option value="Achal Kothawade">Achal Kothawade</option>
+                    <option value="Madhavi Bhujbal">Madhavi Bhujbal</option>
+                </select>
+            </div>    <br>
+            <div class="col-md-8">
+                <label for="TypesOfIncident" class="control-label">Types of Incident :</label>
+                @foreach (var item in obj.items)
+                {
+                    <label>
+                        <input type="checkbox" @bind="item.IsSelected" /> @item.Name
+                    </label>
+                }
+            </div>   <br>
+            <div class="col-md-8">
+                <label for="NameofInjuredPerson" class="control-label">Name of Injured Person</label>
+                <select @bind="@obj.NameofInjuredPerson" class="form-control">
+                    <option value=""></option>
+                    <option value="Achal Kothawade">Achal Kothawade</option>
+                    <option value="Madhavi Bhujabal">Madhavi Bhujabal</option>
+                </select>
+            </div>  <br />
+            <div class="col-md-8">
+                <label for="Gender" class="control-label"> Gender : </label>
+                @foreach (var option in obj.Options)
+                {
+                    <label>
+                        <input type="radio" name="options" @onclick="() => SetSelected(option)" />
+                        @option
+                    </label>
+                }
+            </div>
+            <br />
+            <div class="col-md-8">
+                <label for="BloodGroup" class="control-label">Blood Group</label>
+                <select @bind="@obj.BloodGroup" class="form-control">
+                    <option value=""></option>
+                    <option value="O+ve">O+ve</option>
+                    <option value="AB+ve">AB+ve</option>
+                    <option value="B+ve">B+ve</option>
+                </select>
+            </div>  <br />
+            <div class="col-md-8">
+                <label for="InjuriLevel" class="control-label">Injuri Level</label>
+                <select @bind="@obj.InjuriLevel" class="form-control">
+                    <option value=""></option>
+                    <option value="Near Miss">Near Miss</option>
+                    <option value="Moderate">Moderate</option>
+                    <option value="Severe">Severe</option>
+                </select>
+            </div>  <br />
+            <div class="col-md-8">
+                <label for="InjuriDescription" class="control-label">Injury Description</label>
+                <input class="form-control" @bind="@obj.InjuriDescription" />
+            </div> <br />
+            <div class="col-md-8">
+                <label for="EquipmentLevel" class="control-label">Equipment Level</label>
+                <select @bind="@obj.EquipmentDamage" class="form-control">
+                    <option value=""></option>
+                    <option value="Leakage">Leakage</option>
+                    <option value="Blast">Blast</option>
+                    <option value="Fire">Fire</option>
+                </select>
+            </div> <br />
+            <div class="col-md-8">
+                <label for="EquipmentDescription" class="control-label">Equipment Description</label>
+                <input class="form-control" @bind="@obj.EquipmentDescription" />
+            </div> <br />
+            <div class="col-md-8">
+                <label for="RCA" class="control-label">RCA</label>
+                <select @bind="@obj.Rca" class="form-control">
+                    <option value=""></option>
+                    <option value="No Safety Violation">No Safety Violation</option>
+                    <option value="No missed work due to injury">No missed work due to injury</option>
+                    <option value="No Unsafe practice Observed">No Unsafe practice Observed</option>
+                    <option value="Safety Violation">Safety Violation</option>
+                    <option value="Work missed due to injury">Work missed due to injury</option>
+                    <option value="Unsafe practice Observed">Unsafe practice Observed</option>
+                </select>
+            </div> <br />
+            <div class="col-md-8">
+                <label for="Reason" class="control-label">Reason</label>
+                <input class="form-control" @bind="@obj.Reason" />
+            </div> <br />
+            <div class="col-md-8">
+                <label for="CAPA" class="control-label">CAPA</label>
+                <input class="form-control" @bind="@obj.Capa" />
+            </div> <br />
+            <div class="col-md-8">
+                <InputFile OnChange="@HandleFileChange" />
+                @if (!string.IsNullOrEmpty(imageUrl))
+                {
+                    <img src="@imageUrl" alt="Uploaded Image" />
+                }
+            </div>
+            <br />
+            <div>
+                <input type="button" class="btn btn-primary" @onclick="CreateNewSafety" value="Save Data" />
+                <button @onclick="GeneratePDF">Generate PDF</button>
+            </div>
+        </div>
+    </div>
+</form>
+
+@code {
+    private string imageUrl;
+    private Form5.Models.Safety obj = new Form5.Models.Safety();
+
+    void SetSelected(string option)
+    {
+        obj.Gender = option;
+        var selectedItems = obj.items.Where(i => i.IsSelected).ToList();
+        foreach (var selectedItem in selectedItems)
+        {
+            obj.TypesofIncident += "," + selectedItem.Name;
+        }
+    }
+
+    private void GeneratePDF()
+    {
+        using (var memoryStream = new MemoryStream())
+        {
+            var writer = new PdfWriter(memoryStream);
+            var pdf = new PdfDocument(writer);
+            var document = new Document(pdf);
+
+            document.Add(new Paragraph($"Plant: {obj.Plant}"));
+            document.Add(new Paragraph($"Department: {obj.Department}"));
+            document.Add(new Paragraph($"Name of Supervisor: {obj.NameofSupervisor}"));
+            document.Add(new Paragraph($"Types of Incident: {string.Join(", ", obj.items.Where(i => i.IsSelected).Select(i => i.Name))}"));
+            document.Add(new Paragraph($"Name of Injured Person: {obj.NameofInjuredPerson}"));
+            document.Add(new Paragraph($"Gender: {obj.Gender}"));
+            document.Add(new Paragraph($"Blood Group: {obj.BloodGroup}"));
+            document.Add(new Paragraph($"Injury Level: {obj.InjuriLevel}"));
+            document.Add(new Paragraph($"Injury Description: {obj.InjuriDescription}"));
+            document.Add(new Paragraph($"Equipment Level: {obj.EquipmentDamage}"));
+            document.Add(new Paragraph($"Equipment Description: {obj.EquipmentDescription}"));
+            document.Add(new Paragraph($"RCA: {obj.Rca}"));
+            document.Add(new Paragraph($"Reason: {obj.Reason}"));
+            document.Add(new Paragraph($"CAPA: {obj.Capa}"));
+            document.Close();
+
+            var pdfData = memoryStream.ToArray();
+            var path = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "pdfs");
+            Directory.CreateDirectory(path);
+            var fileName = $"SafetyForm_{Guid.NewGuid()}.pdf";
+            var filePath = Path.Combine(path, fileName);
+            File.WriteAllBytes(filePath, pdfData);
+
+            ShowPopup($"PDF generated successfully and saved to {filePath}");
+        }
+    }
+
+    private void ShowPopup(string message)
+    {
+        JSRuntime.InvokeVoidAsync("alert", message);
+    }
+
+    private async Task CreateNewSafety()
+    {
+        if (!string.IsNullOrEmpty(imageUrl))
+        {
+            obj.Photo = Convert.FromBase64String(imageUrl.Split(',')[1]);
+            await safetyService.AddNewSafety(obj);
+            NavigationManager.NavigateTo("/");
+        }
+    }
+
+    private async Task HandleFileChange(InputFileChangeEventArgs e)
+    {
+        var file = e.File;
+        var buffer = new byte[file.Size];
+        await file.OpenReadStream().ReadAsync(buffer);
+        imageUrl = $"data:{file.ContentType};base64,{Convert.ToBase64String(buffer)}";
+    }
+}
