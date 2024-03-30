@@ -25,7 +25,7 @@ namespace Form5.Service
             return true;
         }
 
-        public async Task<Safety> GetEmployeeById(int id)
+        public async Task<Safety> GetsaftyFormById(int id)
         {
             Safety safety = await _applicationDbContext.Safety.FirstOrDefaultAsync(x => x.Id == id);
             return safety;
@@ -43,6 +43,11 @@ namespace Form5.Service
             _applicationDbContext.Safety.Remove(safety);
             await _applicationDbContext.SaveChangesAsync();
             return true;
+        }
+
+        public Safety GetLatestSafetyRecord()
+        {
+            return _applicationDbContext.Safety.OrderByDescending(x => x.Id).FirstOrDefault();
         }
     }
 }

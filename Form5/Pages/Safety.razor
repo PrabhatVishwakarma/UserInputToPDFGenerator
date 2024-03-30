@@ -4,6 +4,7 @@
 @using Form5.Models
 @using System.Threading.Tasks
 @using Org.BouncyCastle.Utilities.IO
+@using iText.IO.Image
 @using iText.Kernel.Pdf
 @using iText.Layout
 @using System.IO
@@ -57,7 +58,8 @@
                         <input type="checkbox" @bind="item.IsSelected" /> @item.Name
                     </label>
                 }
-            </div>   <br>
+            </div>
+            <br />
             <div class="col-md-8">
                 <label for="NameofInjuredPerson" class="control-label">Name of Injured Person</label>
                 <select @bind="@obj.NameofInjuredPerson" class="form-control">
@@ -99,19 +101,24 @@
                 <label for="InjuriDescription" class="control-label">Injury Description</label>
                 <input class="form-control" @bind="@obj.InjuriDescription" />
             </div> <br />
-            <div class="col-md-8">
-                <label for="EquipmentLevel" class="control-label">Equipment Level</label>
-                <select @bind="@obj.EquipmentDamage" class="form-control">
-                    <option value=""></option>
-                    <option value="Leakage">Leakage</option>
-                    <option value="Blast">Blast</option>
-                    <option value="Fire">Fire</option>
-                </select>
-            </div> <br />
-            <div class="col-md-8">
-                <label for="EquipmentDescription" class="control-label">Equipment Description</label>
-                <input class="form-control" @bind="@obj.EquipmentDescription" />
-            </div> <br />
+@if (obj.items.Any(i => i.IsSelected && i.Name == "Equipment Damage"))
+{
+    <div class="col-md-8">
+        <label for="EquipmentLevel" class="control-label">Equipment Level</label>
+        <select @bind="@obj.EquipmentDamage" class="form-control">
+            <option value=""></option>
+            <option value="Leakage">Leakage</option>
+            <option value="Blast">Blast</option>
+            <option value="Fire">Fire</option>
+        </select>
+    </div>
+    <br />
+    <div class="col-md-8">
+        <label for="EquipmentDescription" class="control-label">Equipment Description</label>
+        <input class="form-control" @bind="@obj.EquipmentDescription" />
+    </div>
+    <br />
+}
             <div class="col-md-8">
                 <label for="RCA" class="control-label">RCA</label>
                 <select @bind="@obj.Rca" class="form-control">
@@ -164,59 +171,69 @@
 
     private void GeneratePDF()
     {
-        using (var memoryStream = new MemoryStream())
-        {
-            var writer = new PdfWriter(memoryStream);
-            var pdf = new PdfDocument(writer);
-            var document = new Document(pdf);
+        var safety = safetyService.GetLatestSafetyRecord();
 
-            document.Add(new Paragraph($"Plant: {obj.Plant}"));
-            document.Add(new Paragraph($"Department: {obj.Department}"));
-            document.Add(new Paragraph($"Name of Supervisor: {obj.NameofSupervisor}"));
-            document.Add(new Paragraph($"Types of Incident: {string.Join(", ", obj.items.Where(i => i.IsSelected).Select(i => i.Name))}"));
-            document.Add(new Paragraph($"Name of Injured Person: {obj.NameofInjuredPerson}"));
-            document.Add(new Paragraph($"Gender: {obj.Gender}"));
-            document.Add(new Paragraph($"Blood Group: {obj.BloodGroup}"));
-            document.Add(new Paragraph($"Injury Level: {obj.InjuriLevel}"));
-            document.Add(new Paragraph($"Injury Description: {obj.InjuriDescription}"));
-            document.Add(new Paragraph($"Equipment Level: {obj.EquipmentDamage}"));
-            document.Add(new Paragraph($"Equipment Description: {obj.EquipmentDescription}"));
-            document.Add(new Paragraph($"RCA: {obj.Rca}"));
-            document.Add(new Paragraph($"Reason: {obj.Reason}"));
-            document.Add(new Paragraph($"CAPA: {obj.Capa}"));
+        var pdfMemoryStream = new MemoryStream();
+
+        using (var pdfWriter = new PdfWriter(pdfMemoryStream))
+        {
+            var pdfDocument = new PdfDocument(pdfWriter);
+            var document = new Document(pdfDocument);
+
+            document.Add(new Paragraph($"Plant: {safety.Plant}"));
+            document.Add(new Paragraph($"Department: {safety.Department}"));
+            document.Add(new Paragraph($"Name of Supervisor: {safety.NameofSupervisor}"));
+            document.Add(new Paragraph($"Types of Incident: {string.Join(", ", safety.items.Where(i => i.IsSelected).Select(i => i.Name))}"));
+            document.Add(new Paragraph($"Name of Injured Person: {safety.NameofInjuredPerson}"));
+            document.Add(new Paragraph($"Gender: {safety.Gender}"));
+            document.Add(new Paragraph($"Blood Group: {safety.BloodGroup}"));
+            document.Add(new Paragraph($"Injury Level: {safety.InjuriLevel}"));
+            document.Add(new Paragraph($"Injury Description: {safety.InjuriDescription}"));
+            document.Add(new Paragraph($"Equipment Level: {safety.EquipmentDamage}"));
+            document.Add(new Paragraph($"Equipment Description: {safety.EquipmentDescription}"));
+            document.Add(new Paragraph($"RCA: {safety.Rca}"));
+            document.Add(new Paragraph($"Reason: {safety.Reason}"));
+            document.Add(new Paragraph($"CAPA: {safety.Capa}"));
+
+            if (!string.IsNullOrEmpty(safety.ImageUrl))
+            {
+                document.Add(new Paragraph("Image:"));
+                byte[] imageData = Convert.FromBase64String(safety.ImageUrl.Split(',')[1]);
+                Image image = new Image(ImageDataFactory.Create(imageData));
+                document.Add(image);
+            }
+
             document.Close();
 
-            var pdfData = memoryStream.ToArray();
+            var pdfData = pdfMemoryStream.ToArray();
             var path = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "pdfs");
             Directory.CreateDirectory(path);
             var fileName = $"SafetyForm_{Guid.NewGuid()}.pdf";
             var filePath = Path.Combine(path, fileName);
             File.WriteAllBytes(filePath, pdfData);
-
             ShowPopup($"PDF generated successfully and saved to {filePath}");
         }
     }
-
-    private void ShowPopup(string message)
-    {
-        JSRuntime.InvokeVoidAsync("alert", message);
-    }
-
-    private async Task CreateNewSafety()
-    {
-        if (!string.IsNullOrEmpty(imageUrl))
+        private void ShowPopup(string message)
         {
-            obj.Photo = Convert.FromBase64String(imageUrl.Split(',')[1]);
-            await safetyService.AddNewSafety(obj);
-            NavigationManager.NavigateTo("/");
+            JSRuntime.InvokeVoidAsync("alert", message);
         }
-    }
 
-    private async Task HandleFileChange(InputFileChangeEventArgs e)
-    {
-        var file = e.File;
-        var buffer = new byte[file.Size];
-        await file.OpenReadStream().ReadAsync(buffer);
-        imageUrl = $"data:{file.ContentType};base64,{Convert.ToBase64String(buffer)}";
-    }
+        private async Task CreateNewSafety()
+        {
+            if (!string.IsNullOrEmpty(imageUrl))
+            {
+                obj.Photo = Convert.FromBase64String(imageUrl.Split(',')[1]);
+            }
+        await safetyService.AddNewSafety(obj);
+        NavigationManager.NavigateTo("/");
+        }
+
+        private async Task HandleFileChange(InputFileChangeEventArgs e)
+        {
+            var file = e.File;
+            var buffer = new byte[file.Size];
+            await file.OpenReadStream().ReadAsync(buffer);
+            imageUrl = $"data:{file.ContentType};base64,{Convert.ToBase64String(buffer)}";
+        }
 }
